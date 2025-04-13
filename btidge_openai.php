@@ -17,7 +17,7 @@ if (!isset($data['model']) || !isset($data['messages'])) {
     exit;
 }
 
-$apiKey = 'sk-...'; // 🔐 ВСТАВЬ СЮДА СВОЙ OPENAI API KEY
+$apiKey = getenv('OPENAI_API_KEY'); // 🔐 ВСТАВЬ СЮДА СВОЙ OPENAI API KEY
 
 $ch = curl_init('https://api.openai.com/v1/chat/completions');
 curl_setopt_array($ch, [
