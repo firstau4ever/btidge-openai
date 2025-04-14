@@ -30,7 +30,6 @@ $apiKey = $data['api_key'];
 $assistantId = $data['assistant_id'];
 $messages = $data['messages'];
 
-// Общие заголовки
 $headers = [
     'Content-Type: application/json',
     'Authorization: Bearer ' . $apiKey,
@@ -119,7 +118,7 @@ if ($status !== 'completed') {
     exit;
 }
 
-// Получение ответа
+// Получение сообщений
 $ch = curl_init("https://api.openai.com/v1/threads/$threadId/messages");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -130,7 +129,7 @@ curl_close($ch);
 
 $messagesData = json_decode($messagesResponse, true);
 
-// Найти последний валидный ответ от ассистента
+// Последний валидный ответ от ассистента
 $assistantMessages = array_filter($messagesData['data'], function ($msg) {
     return $msg['role'] === 'assistant'
         && isset($msg['content'][0]['text']['value'])
@@ -141,7 +140,7 @@ $assistantMessages = array_filter($messagesData['data'], function ($msg) {
 $last = !empty($assistantMessages) ? end($assistantMessages) : null;
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
 
-// Удаление thread (опционально)
+// Удаление thread (необязательно)
 $ch = curl_init("https://api.openai.com/v1/threads/$threadId");
 curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST => 'DELETE',
@@ -153,6 +152,7 @@ curl_close($ch);
 
 // Ответ
 echo json_encode([
+    'status' => 'ok',
     'content' => $content,
     'raw' => $messagesData
 ]);
