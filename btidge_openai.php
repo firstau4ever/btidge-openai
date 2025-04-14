@@ -129,7 +129,11 @@ $messagesResponse = curl_exec($ch);
 curl_close($ch);
 
 $messagesData = json_decode($messagesResponse, true);
-$last = !empty($messagesData['data']) ? end($messagesData['data']) : null;
+$assistantMessages = array_filter($messagesData['data'], function($msg) {
+    return $msg['role'] === 'assistant' && !empty($msg['content'][0]['text']['value']);
+});
+$last = !empty($assistantMessages) ? end($assistantMessages) : null;
+
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
 
 // Удаление thread (опционально)
