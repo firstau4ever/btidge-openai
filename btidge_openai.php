@@ -1,4 +1,5 @@
 <?php
+// Разрешаем CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -9,16 +10,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 header('Content-Type: application/json');
+
+// Получаем тело запроса
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-if (!isset($data['model']) || !isset($data['messages'])) {
-    echo json_encode(['error' => 'Invalid request: missing model or messages']);
+// Проверка необходимых полей
+if (
+    empty($data['model']) ||
+    empty($data['messages']) ||
+    empty($data['api_key'])
+) {
+    echo json_encode(['error' => 'Invalid request: missing model, messages, or api_key']);
     exit;
 }
 
-$apiKey = getenv('OPENAI_API_KEY'); // 🔐 ВСТАВЬ СЮДА СВОЙ OPENAI API KEY
+$apiKey = $data['api_key'];
 
+// Инициализация запроса к OpenAI
 $ch = curl_init('https://api.openai.com/v1/chat/completions');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
