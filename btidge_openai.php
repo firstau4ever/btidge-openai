@@ -67,8 +67,14 @@ foreach ($messages as $msg) {
             'content' => $msg['content']
         ]),
     ]);
-    curl_exec($ch);
+    $res = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    if ($http_code !== 200) {
+        echo json_encode(['error' => 'Message append failed', 'debug' => $res]);
+        exit;
+    }
 }
 
 // Запуск ассистента
@@ -129,7 +135,19 @@ $messagesResponse = curl_exec($ch);
 curl_close($ch);
 
 $messagesData = json_decode($messagesResponse, true);
-$last = end($messagesData['data']);
+$last = !empty($messagesData['data']) ? end($messagesData['data']) : null;
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
+
+// (опционально) удаление thread
+$ch = curl_init("https://api.openai.com/v1/threads/$threadId");
+curl_setopt_array($ch, [
+    CURLOPT_CUSTOMREQUEST => 'DELETE',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer ' . $apiKey
+    ]
+]);
+curl_exec($ch);
+curl_close($ch);
 
 echo json_encode(['content' => $content, 'raw' => $messagesData]);
