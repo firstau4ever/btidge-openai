@@ -15,7 +15,7 @@ header('Content-Type: application/json');
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-// Проверка необходимых полей
+// Проверка обязательных полей
 if (
     empty($data['model']) ||
     empty($data['messages']) ||
@@ -30,15 +30,19 @@ $apiKey = $data['api_key'];
 $assistantId = $data['assistant_id'];
 $messages = $data['messages'];
 
+// Общие заголовки
+$headers = [
+    'Content-Type: application/json',
+    'Authorization: Bearer ' . $apiKey,
+    'OpenAI-Beta: assistants=v2'
+];
+
 // Создание thread
 $ch = curl_init('https://api.openai.com/v1/threads');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey
-    ],
+    CURLOPT_HTTPHEADER => $headers,
     CURLOPT_POSTFIELDS => json_encode([]),
 ]);
 $threadResponse = curl_exec($ch);
@@ -52,16 +56,13 @@ if (!$threadId) {
     exit;
 }
 
-// Добавляем сообщения в thread
+// Добавление сообщений
 foreach ($messages as $msg) {
     $ch = curl_init("https://api.openai.com/v1/threads/$threadId/messages");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $apiKey
-        ],
+        CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode([
             'role' => $msg['role'],
             'content' => $msg['content']
@@ -82,10 +83,7 @@ $ch = curl_init("https://api.openai.com/v1/threads/$threadId/runs");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey
-    ],
+    CURLOPT_HTTPHEADER => $headers,
     CURLOPT_POSTFIELDS => json_encode([
         'assistant_id' => $assistantId
     ]),
@@ -100,16 +98,14 @@ if (!$runId) {
     exit;
 }
 
-// Ожидаем завершения выполнения
+// Ожидание завершения run
 $status = 'queued';
 do {
     sleep(1);
     $ch = curl_init("https://api.openai.com/v1/threads/$threadId/runs/$runId");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $apiKey
-        ]
+        CURLOPT_HTTPHEADER => $headers
     ]);
     $statusResponse = curl_exec($ch);
     curl_close($ch);
@@ -123,13 +119,11 @@ if ($status !== 'completed') {
     exit;
 }
 
-// Получаем итоговое сообщение
+// Получение ответа
 $ch = curl_init("https://api.openai.com/v1/threads/$threadId/messages");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ' . $apiKey
-    ]
+    CURLOPT_HTTPHEADER => $headers
 ]);
 $messagesResponse = curl_exec($ch);
 curl_close($ch);
@@ -138,16 +132,15 @@ $messagesData = json_decode($messagesResponse, true);
 $last = !empty($messagesData['data']) ? end($messagesData['data']) : null;
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
 
-// (опционально) удаление thread
+// Удаление thread (опционально)
 $ch = curl_init("https://api.openai.com/v1/threads/$threadId");
 curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST => 'DELETE',
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ' . $apiKey
-    ]
+    CURLOPT_HTTPHEADER => $headers
 ]);
 curl_exec($ch);
 curl_close($ch);
 
+// Ответ
 echo json_encode(['content' => $content, 'raw' => $messagesData]);
