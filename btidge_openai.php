@@ -138,7 +138,7 @@ $assistantMessages = array_filter($messagesData['data'], function ($msg) {
         && trim($msg['content'][0]['text']['value']) !== 'Нет ответа от Assistant.';
 });
 
-$last = !empty($assistantMessages) ? end($assistantMessages) : null;
+$last = !empty($assistantMessages) ? array_values($assistantMessages)[0] : null;
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
 
 // Удаление thread (необязательно)
