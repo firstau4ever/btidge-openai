@@ -129,11 +129,16 @@ $messagesResponse = curl_exec($ch);
 curl_close($ch);
 
 $messagesData = json_decode($messagesResponse, true);
-$assistantMessages = array_filter($messagesData['data'], function($msg) {
-    return $msg['role'] === 'assistant' && !empty($msg['content'][0]['text']['value']);
-});
-$last = !empty($assistantMessages) ? end($assistantMessages) : null;
 
+// Найти последний валидный ответ от ассистента
+$assistantMessages = array_filter($messagesData['data'], function ($msg) {
+    return $msg['role'] === 'assistant'
+        && isset($msg['content'][0]['text']['value'])
+        && trim($msg['content'][0]['text']['value']) !== ''
+        && trim($msg['content'][0]['text']['value']) !== 'Нет ответа от Assistant.';
+});
+
+$last = !empty($assistantMessages) ? end($assistantMessages) : null;
 $content = $last['content'][0]['text']['value'] ?? 'Ответ не получен';
 
 // Удаление thread (опционально)
@@ -147,4 +152,7 @@ curl_exec($ch);
 curl_close($ch);
 
 // Ответ
-echo json_encode(['content' => $content, 'raw' => $messagesData]);
+echo json_encode([
+    'content' => $content,
+    'raw' => $messagesData
+]);
