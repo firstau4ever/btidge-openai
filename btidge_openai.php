@@ -87,8 +87,8 @@ $runPayload = [
 if (!empty($data['dynamic_data'])) {
     $runPayload['additional_messages'] = [
         [
-            'role' => 'system',
-            'content' => 'dynamic_data: ' . json_encode($data['dynamic_data'], JSON_UNESCAPED_UNICODE)
+            'role' => 'user',
+            'content' => '[DYNAMIC_DATA]' . json_encode($data['dynamic_data'], JSON_UNESCAPED_UNICODE)
         ]
     ];
 }
