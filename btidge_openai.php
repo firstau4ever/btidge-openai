@@ -78,15 +78,26 @@ foreach ($messages as $msg) {
     }
 }
 
-// Запуск ассистента
+// Запуск ассистента с dynamic_data
 $ch = curl_init("https://api.openai.com/v1/threads/$threadId/runs");
+$runPayload = [
+    'assistant_id' => $assistantId,
+];
+
+if (!empty($data['dynamic_data'])) {
+    $runPayload['additional_messages'] = [
+        [
+            'role' => 'system',
+            'content' => 'dynamic_data: ' . json_encode($data['dynamic_data'], JSON_UNESCAPED_UNICODE)
+        ]
+    ];
+}
+
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
     CURLOPT_HTTPHEADER => $headers,
-    CURLOPT_POSTFIELDS => json_encode([
-        'assistant_id' => $assistantId
-    ]),
+    CURLOPT_POSTFIELDS => json_encode($runPayload)
 ]);
 $runResponse = curl_exec($ch);
 $runData = json_decode($runResponse, true);
