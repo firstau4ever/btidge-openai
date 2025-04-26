@@ -11,32 +11,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header('Content-Type: application/json');
 
-// Получаем тело запроса
+// Получаем весь сырой запрос
 $input = file_get_contents('php://input');
-$data = json_decode($input, true);
 
-if (empty($data['api_key']) || empty($data['endpoint'])) {
-    echo json_encode(['error' => 'Missing required fields: api_key, endpoint']);
+// Адрес OpenAI (фиксированный или передавать через заголовок если нужно)
+$openai_url = 'https://api.openai.com/v1'; // Можно изменить базовый URL
+
+// Заголовок Authorization: Bearer должен прийти в запросе
+$authHeader = getallheaders()['Authorization'] ?? '';
+
+if (empty($authHeader)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Authorization header missing']);
     exit;
 }
 
-$apiKey = $data['api_key'];
-$endpoint = $data['endpoint'];
-$payload = $data['payload'] ?? [];
+// Конечная точка OpenAI (например: /chat/completions или /threads/{id}/messages)
+$path = $_GET['path'] ?? '';
 
-// Подготовка запроса к OpenAI
-$headers = [
-    'Content-Type: application/json',
-    'Authorization: Bearer ' . $apiKey
-];
+if (empty($path)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Missing OpenAI API path']);
+    exit;
+}
 
-// Отправка запроса на указанный endpoint OpenAI
-$ch = curl_init($endpoint);
+$url = rtrim($openai_url, '/') . '/' . ltrim($path, '/');
+
+// Инициируем запрос к OpenAI
+$ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => $headers,
-    CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE)
+    CURLOPT_HTTPHEADER => [
+        'Content-Type: application/json',
+        'Authorization: ' . $authHeader
+    ],
+    CURLOPT_POSTFIELDS => $input
 ]);
 
 $response = curl_exec($ch);
@@ -44,12 +54,13 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
 curl_close($ch);
 
-// Проверка ошибок запроса
+// Обработка ошибок curl
 if ($response === false) {
+    http_response_code(500);
     echo json_encode(['error' => 'Curl error', 'details' => $curlError]);
     exit;
 }
 
-// Возврат оригинального ответа OpenAI
+// Отдаем ровно то, что вернул OpenAI
 http_response_code($httpCode);
 echo $response;
