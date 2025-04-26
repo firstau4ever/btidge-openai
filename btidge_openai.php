@@ -2,7 +2,7 @@
 // Разрешаем CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: *');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -11,22 +11,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header('Content-Type: application/json');
 
-// Получаем весь сырой запрос
-$input = file_get_contents('php://input');
+// Получаем все заголовки запроса
+$requestHeaders = getallheaders();
 
-// Адрес OpenAI (фиксированный или передавать через заголовок если нужно)
-$openai_url = 'https://api.openai.com/v1'; // Можно изменить базовый URL
-
-// Заголовок Authorization: Bearer должен прийти в запросе
-$authHeader = getallheaders()['Authorization'] ?? '';
-
-if (empty($authHeader)) {
+// Проверка наличия Authorization
+if (empty($requestHeaders['Authorization'])) {
     http_response_code(400);
     echo json_encode(['error' => 'Authorization header missing']);
     exit;
 }
 
-// Конечная точка OpenAI (например: /chat/completions или /threads/{id}/messages)
+// Собираем все заголовки для передачи на OpenAI
+$forwardHeaders = [];
+foreach ($requestHeaders as $key => $value) {
+    $forwardHeaders[] = $key . ': ' . $value;
+}
+
+// Получаем тело запроса
+$input = file_get_contents('php://input');
+
+// Конечная точка OpenAI (например: ?path=chat/completions)
+$openaiBaseUrl = 'https://api.openai.com/v1/';
 $path = $_GET['path'] ?? '';
 
 if (empty($path)) {
@@ -35,18 +40,15 @@ if (empty($path)) {
     exit;
 }
 
-$url = rtrim($openai_url, '/') . '/' . ltrim($path, '/');
+$url = rtrim($openaiBaseUrl, '/') . '/' . ltrim($path, '/');
 
-// Инициируем запрос к OpenAI
+// Отправка запроса
 $ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: ' . $authHeader
-    ],
-    CURLOPT_POSTFIELDS => $input
+    CURLOPT_HTTPHEADER => $forwardHeaders,
+    CURLOPT_POSTFIELDS => $input,
 ]);
 
 $response = curl_exec($ch);
@@ -54,13 +56,13 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
 curl_close($ch);
 
-// Обработка ошибок curl
+// Ошибка curl
 if ($response === false) {
     http_response_code(500);
     echo json_encode(['error' => 'Curl error', 'details' => $curlError]);
     exit;
 }
 
-// Отдаем ровно то, что вернул OpenAI
+// Ответ от OpenAI
 http_response_code($httpCode);
 echo $response;
