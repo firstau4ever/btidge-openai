@@ -9,7 +9,7 @@ if (!$path) {
 }
 
 // Оригинальный адрес OpenAI
-$url = "https://api.openai.com/v1/" . $path;
+$url = "https://api.openai.com/v1/" . ltrim($path, '/');
 
 // Заголовки
 $headers = [];
