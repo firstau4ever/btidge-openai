@@ -1,6 +1,7 @@
 <?php
 // Получаем путь из параметра
 $path = $_GET['path'] ?? '';
+$path = str_replace('clothes', 'threads', $path);
 
 if (!$path) {
     http_response_code(400);
