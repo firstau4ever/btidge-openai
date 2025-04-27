@@ -13,9 +13,21 @@ if (!$path) {
 $url = "https://api.openai.com/v1/" . ltrim($path, '/');
 
 // Заголовки
+$incoming_headers = getallheaders();
 $headers = [];
-foreach (getallheaders() as $name => $value) {
+
+// Проверяем наличие заголовка Accept
+$has_accept = false;
+foreach ($incoming_headers as $name => $value) {
+    if (strtolower($name) === 'accept') {
+        $has_accept = true;
+    }
     $headers[] = "$name: $value";
+}
+
+// Если Accept не был передан — добавляем его
+if (!$has_accept) {
+    $headers[] = "Accept: application/json";
 }
 
 // Тело запроса
